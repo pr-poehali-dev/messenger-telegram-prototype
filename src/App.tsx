@@ -151,6 +151,9 @@ function AuthScreen({ onAuth }: { onAuth: (user: User, token: string) => void })
     setLoading(false);
     if (res.ok) {
       setDevCode(res.dev_code || null);
+      if (!res.sms_sent && res.sms_error) {
+        setError(`SMS не отправлено: ${res.sms_error}`);
+      }
       setStep('code');
     } else {
       setError(res.error || 'Ошибка отправки');
@@ -220,10 +223,11 @@ function AuthScreen({ onAuth }: { onAuth: (user: User, token: string) => void })
             {devCode && (
               <div style={{
                 background: '#4f8ef711', border: '1px solid #4f8ef733',
-                borderRadius: 10, padding: '8px 12px', marginBottom: 12,
-                fontSize: 12, color: '#4f8ef7', textAlign: 'center',
+                borderRadius: 10, padding: '10px 14px', marginBottom: 12,
+                fontSize: 13, color: '#4f8ef7', textAlign: 'center',
               }}>
-                SMS не настроен — тестовый код: <b>{devCode}</b>
+                📱 SMS не дошло — введите этот код:<br />
+                <span style={{ fontSize: 22, fontWeight: 700, letterSpacing: '0.2em' }}>{devCode}</span>
               </div>
             )}
             <input value={code} onChange={e => setCode(e.target.value.replace(/\D/g, '').slice(0, 6))}

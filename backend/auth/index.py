@@ -23,10 +23,13 @@ def get_conn():
     return psycopg2.connect(os.environ["DATABASE_URL"])
 
 
-def send_sms(phone: str, code: str) -> bool:
+def send_sms(phone: str, code: str):
+    """Отправляет SMS через sms.ru. Возвращает (ok: bool, error_text: str)."""
     api_id = os.environ.get("SMSRU_API_ID", "")
     if not api_id:
-        return False
+        print("[SMS] SMSRU_API_ID не задан")
+        return False, "API ключ sms.ru не настроен"
+
     clean_phone = phone.replace("+", "").replace(" ", "").replace("-", "")
     msg = f"Ваш код подтверждения: {code}"
     params = urllib.parse.urlencode({
@@ -36,12 +39,31 @@ def send_sms(phone: str, code: str) -> bool:
         "json": 1
     })
     url = f"https://sms.ru/sms/send?{params}"
+    print(f"[SMS] Запрос: {url[:80]}...")
     try:
-        with urllib.request.urlopen(url, timeout=10) as resp:
-            result = json.loads(resp.read().decode())
-            return result.get("status") == "OK"
-    except Exception:
-        return False
+        with urllib.request.urlopen(url, timeout=15) as resp:
+            raw = resp.read().decode()
+            print(f"[SMS] Ответ sms.ru: {raw}")
+            result = json.loads(raw)
+            if result.get("status") == "OK":
+                # проверяем статус конкретного номера
+                sms_list = result.get("sms", {})
+                for num, info in sms_list.items():
+                    sms_status = info.get("status")
+                    sms_status_text = info.get("status_text", "")
+                    print(f"[SMS] Номер {num}: {sms_status} — {sms_status_text}")
+                    if sms_status == "OK":
+                        return True, ""
+                    else:
+                        return False, sms_status_text
+                return True, ""
+            else:
+                err = result.get("status_text", str(result))
+                print(f"[SMS] Ошибка: {err}")
+                return False, err
+    except Exception as e:
+        print(f"[SMS] Исключение: {e}")
+        return False, str(e)
 
 
 def handler(event: dict, context) -> dict:
@@ -85,17 +107,19 @@ def handler(event: dict, context) -> dict:
         cur.close()
         conn.close()
 
-        sms_sent = send_sms(clean, code)
+        sms_ok, sms_error = send_sms(clean, code)
+        print(f"[SMS] Итог: ok={sms_ok}, error={sms_error}, phone={clean}, code={code}")
 
         return {
             "statusCode": 200,
             "headers": headers,
             "body": json.dumps({
                 "ok": True,
-                "sms_sent": sms_sent,
+                "sms_sent": sms_ok,
+                "sms_error": sms_error if not sms_ok else None,
                 "phone": clean,
-                # в режиме разработки отдаём код если SMS не отправилось
-                "dev_code": code if not sms_sent else None
+                # показываем код если SMS не отправилось (нет ключа или ошибка)
+                "dev_code": code if not sms_ok else None
             })
         }
 
