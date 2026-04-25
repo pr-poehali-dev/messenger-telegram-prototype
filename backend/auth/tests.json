@@ -1,0 +1,11 @@
+{
+  "tests": [
+    {
+      "name": "Root without body returns 404",
+      "method": "GET",
+      "path": "/",
+      "expectedStatus": 404,
+      "bodyMatcher": "partial"
+    }
+  ]
+}

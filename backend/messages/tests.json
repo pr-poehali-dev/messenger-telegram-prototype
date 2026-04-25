@@ -1,0 +1,19 @@
+{
+  "tests": [
+    {
+      "name": "Get messages without token",
+      "method": "GET",
+      "path": "/?chat_id=1",
+      "expectedStatus": 401,
+      "bodyMatcher": "partial"
+    },
+    {
+      "name": "Send message without token",
+      "method": "POST",
+      "path": "/",
+      "body": {"chat_id": 1, "text": "hello"},
+      "expectedStatus": 401,
+      "bodyMatcher": "partial"
+    }
+  ]
+}

@@ -1,0 +1,11 @@
+{
+  "tests": [
+    {
+      "name": "Get contacts without token",
+      "method": "GET",
+      "path": "/",
+      "expectedStatus": 401,
+      "bodyMatcher": "partial"
+    }
+  ]
+}
